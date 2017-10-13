@@ -4,6 +4,10 @@
     window.rester = window.rester || {};
     rester.exportProviders = rester.exportProviders || {};
 
+    // Postman Collection Format v2.1.0
+    // Docs: https://schema.getpostman.com/json/collection/v2.1.0/docs/index.html
+    // Schema: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
+
     rester.exportProviders.postman = async function () {
         const requests = await rester.data.requests.query();
         const history = await rester.data.history.query();
