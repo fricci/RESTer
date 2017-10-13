@@ -6,6 +6,8 @@
 
     rester.exportProviders.postman = async function () {
         const requests = await rester.data.requests.query();
+        const history = await rester.data.history.query();
+        addHistoryEntriesToRequests(requests, history);
 
         return {
             info: {
@@ -24,25 +26,91 @@
     }
 
     class Item {
-        constructor(request) {
-            this.id = String(request.id);
-            this.name = request.title;
-            this.request = {
-                url: request.url,
-                method: request.method,
-                header: request.headers.map(header => ({
-                    key: header.name,
-                    value: header.value
-                }))
-            };
+        constructor(resterRequest) {
+            this.id = String(resterRequest.id);
+            this.name = resterRequest.title;
+            this.request = new Request(resterRequest);
+            this.response = resterRequest.history.map(entry => new Response(entry));
+        }
+    }
 
-            if (request.body) {
-                this.request.body = {
+    class Request {
+        constructor(resterRequest) {
+            this.url = resterRequest.url;
+            this.method = resterRequest.method;
+            this.header = resterRequest.headers.map(header => ({
+                key: header.name,
+                value: header.value
+            }));
+
+            if (resterRequest.body) {
+                this.body = {
                     mode: 'raw',
-                    raw: request.body
+                    raw: resterRequest.body
                 };
             }
         }
+    }
+
+    class Response {
+        constructor(resterHistoryEntry) {
+            this.id = String(resterHistoryEntry.id);
+
+            // The `name` property is not documented in the schame,
+            // but seems to by required by Postman. If it's not present,
+            // you cannot select the response.
+            this.name = resterHistoryEntry.request.title;
+
+            this.originalRequest = new Request(resterHistoryEntry.request);
+            if (resterHistoryEntry.timing) {
+                this.responseTime = resterHistoryEntry.timing.duration;
+            } else if (resterHistoryEntry.timeEnd) {
+                this.responseTime = new Date(resterHistoryEntry.timeEnd) - new Date(resterHistoryEntry.time);
+            }
+
+            this.header = resterHistoryEntry.response.headers.map(header => ({
+                key: header.name,
+                value: header.value
+            }));
+            this.body = resterHistoryEntry.response.body;
+            this.status = resterHistoryEntry.response.statusText;
+            this.code = resterHistoryEntry.response.status;
+        }
+    }
+
+    function addHistoryEntriesToRequests(requests, history) {
+        for (const request of requests) {
+            request.history = history.filter(entry => entry.request.id === request.id);
+        }
+    }
+
+    function findSortedIndexByNameAndType(arr, value) {
+        if (arr.length === 0) {
+            return 0;
+        }
+
+        let low = 0,
+            high = arr.length - 1;
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const comparedValue = arr[mid].name.localeCompare(value.name);
+            if (comparedValue < 0) {
+                low = mid + 1;
+            } else if (comparedValue > 0) {
+                high = mid - 1;
+            } else {
+                const comparedType = arr[mid].constructor.name.localeCompare(value.constructor.name);
+                if (comparedType < 0) {
+                    low = mid + 1;
+                } else if (comparedType > 0) {
+                    high = mid - 1;
+                } else {
+                    return mid;
+                }
+            }
+        }
+
+        return low;
     }
 
     function createItems(requests) {
@@ -52,10 +120,12 @@
             let currentFolder = rootFolder;
             const segments = path.split(/\s*\/\s*/i);
             for (const segment of segments) {
-                let folder = currentFolder.item.find(item => item.name === segment);
-                if (!folder) {
-                    folder = new Folder(segment);
-                    currentFolder.item.push(folder);
+                const segmentFolder = new Folder(segment);
+                const index = findSortedIndexByNameAndType(currentFolder.item, segmentFolder);
+                let folder = currentFolder.item[index];
+                if (!folder || folder.name !== segment) {
+                    folder = segmentFolder;
+                    currentFolder.item.splice(index, 0, folder);
                 }
 
                 currentFolder = folder;
@@ -68,7 +138,8 @@
             const folder = ensureFolder(request.collection);
             const item = new Item(request);
 
-            folder.item.push(item);
+            const index = findSortedIndexByNameAndType(folder.item, item);
+            folder.item.splice(index, 0, item);
         }
 
         return rootFolder.item;
