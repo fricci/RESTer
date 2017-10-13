@@ -10,6 +10,7 @@
         "96": "images/icon-dev96.png"
     },
     "permissions": [
+        "downloads",
         "storage",
         "unlimitedStorage",
         "webRequest",
@@ -31,6 +32,8 @@
             "background/lib/data/requests.js",
             "background/lib/data/responses.js",
             "background/lib/data/history.js",
+            "background/lib/export-providers/postman.js",
+            "background/lib/export.js",
             "background/lib/settings.js",
             "background/index.js"
         ]

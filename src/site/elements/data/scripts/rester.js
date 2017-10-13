@@ -136,6 +136,10 @@
         return sendApiRequest('data.environments.delete', id);
     };
 
+    self.export = function (options) {
+        return sendApiRequest('export', options);
+    };
+
 
     /*
     * Settings

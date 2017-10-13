@@ -3,6 +3,7 @@
 
     const api = {
         data: rester.data,
+        export: rester.export,
         settings: rester.settings
     };
 
