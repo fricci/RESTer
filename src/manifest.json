@@ -21,7 +21,6 @@
         "scripts": [
             "background/lib/utils/event-listeners.js",
             "background/lib/utils/fields.js",
-            "background/lib/utils/polyfills.js",
             "background/lib/data.js",
             "background/lib/data/utils/data-store.js",
             "background/lib/data/utils/db.js",
