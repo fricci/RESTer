@@ -4,14 +4,24 @@
     window.rester = window.rester || {};
     rester.exportProviders = rester.exportProviders || {};
 
-    // Postman Collection Format v2.1.0
-    // Docs: https://schema.getpostman.com/json/collection/v2.1.0/docs/index.html
-    // Schema: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
-
-    rester.exportProviders.postman = async function () {
+    /**
+     * Exports data in the Postman Collection v2.1.0 format.
+     *
+     * Docs: https://schema.getpostman.com/json/collection/v2.1.0/docs/index.html
+     * Schema: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
+     *
+     * @param {Object} options
+     * @param {Boolean} options.includeHistory - If true, the export will
+     * include the history entries. Otherwise it will only include saved
+     * requests.
+     */
+    rester.exportProviders.postman = async function (options) {
         const requests = await rester.data.requests.query();
-        const history = await rester.data.history.query();
-        addHistoryEntriesToRequests(requests, history);
+
+        if (options.includeHistory) {
+            const history = await rester.data.history.query();
+            addHistoryEntriesToRequests(requests, history);
+        }
 
         return {
             info: {
@@ -34,7 +44,10 @@
             this.id = String(resterRequest.id);
             this.name = resterRequest.title;
             this.request = new Request(resterRequest);
-            this.response = resterRequest.history.map(entry => new Response(entry));
+
+            if (resterRequest.history) {
+                this.response = resterRequest.history.map(entry => new Response(entry));
+            }
         }
     }
 
@@ -63,7 +76,7 @@
             // The `name` property is not documented in the schame,
             // but seems to by required by Postman. If it's not present,
             // you cannot select the response.
-            this.name = resterHistoryEntry.request.title;
+            this.name = `${resterHistoryEntry.time} ${resterHistoryEntry.request.title}`;
 
             this.originalRequest = new Request(resterHistoryEntry.request);
             if (resterHistoryEntry.timing) {
